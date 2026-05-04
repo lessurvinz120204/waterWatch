@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 import '../models/announcement_model.dart';
 import '../models/notification_model.dart';
 import '../services/firestore_service.dart';
@@ -45,12 +44,8 @@ class AnnouncementProvider extends ChangeNotifier {
   }
 
   void _updateBadge() {
-    final count = unreadCount;
-    if (count > 0) {
-      FlutterAppBadger.updateBadgeCount(count);
-    } else {
-      FlutterAppBadger.removeBadge();
-    }
+    // App icon badging not supported on most Android launchers
+    // Badge count is shown on the in-app bell icon instead
   }
 
   void _subscribeToAnnouncements() {
