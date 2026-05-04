@@ -37,8 +37,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Verify secrets
+        run: |
+          echo "=== google-services.json ==="
+          cat android/app/google-services.json
+          echo "=== firebase_options.dart ==="
+          cat lib/firebase_options.dart
+
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose 2>&1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
