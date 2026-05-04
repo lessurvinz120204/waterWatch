@@ -81,8 +81,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                 onSelected: (selected) {
                                   setState(() {
                                     _selectedCategory = null;
+                                    _selectedArea = null;
                                   });
                                   announcementProvider.setSelectedCategory(null);
+                                  announcementProvider.setSelectedArea(null);
                                 },
                               ),
                               const SizedBox(width: 8),
@@ -96,6 +98,10 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                     onSelected: (selected) {
                                       setState(() {
                                         _selectedCategory = selected ? category : null;
+                                        if (!selected) {
+                                          _selectedArea = null;
+                                          announcementProvider.setSelectedArea(null);
+                                        }
                                       });
                                       announcementProvider.setSelectedCategory(
                                         selected ? category : null,
@@ -107,45 +113,58 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Area Filter
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              FilterChip(
-                                label: const Text('All Areas'),
-                                selected: _selectedArea == null,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _selectedArea = null;
-                                  });
-                                  announcementProvider.setSelectedArea(null);
-                                },
+                        if (_selectedCategory == null)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Choose a category first, then narrow results by area.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF757575),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              ...areas.map((area) {
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 4),
-                                  child: FilterChip(
-                                    label: Text(area),
-                                    selected: _selectedArea == area,
-                                    onSelected: (selected) {
-                                      setState(() {
-                                        _selectedArea = selected ? area : null;
-                                      });
-                                      announcementProvider.setSelectedArea(
-                                        selected ? area : null,
-                                      );
-                                    },
-                                  ),
-                                );
-                              }).toList(),
-                            ],
+                            ),
                           ),
-                        ),
+                        if (_selectedCategory != null) ...[
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                FilterChip(
+                                  label: const Text('All Areas'),
+                                  selected: _selectedArea == null,
+                                  onSelected: (selected) {
+                                    setState(() {
+                                      _selectedArea = null;
+                                    });
+                                    announcementProvider.setSelectedArea(null);
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                ...areas.map((area) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: FilterChip(
+                                      label: Text(area),
+                                      selected: _selectedArea == area,
+                                      onSelected: (selected) {
+                                        setState(() {
+                                          _selectedArea = selected ? area : null;
+                                        });
+                                        announcementProvider.setSelectedArea(
+                                          selected ? area : null,
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

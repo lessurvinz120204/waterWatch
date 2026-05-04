@@ -14,6 +14,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   String? _selectedCategoryFilter;
+  String? _selectedAreaFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +114,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         onSelected: (selected) {
                           setState(() {
                             _selectedCategoryFilter = null;
+                            _selectedAreaFilter = null;
                           });
                         },
                       ),
@@ -126,6 +128,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             onSelected: (selected) {
                               setState(() {
                                 _selectedCategoryFilter = selected ? category : null;
+                                if (!selected) {
+                                  _selectedAreaFilter = null;
+                                }
                               });
                             },
                           ),
@@ -135,7 +140,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              if (_selectedCategoryFilter != null) ...[
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 44,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        FilterChip(
+                          label: const Text('All Areas'),
+                          selected: _selectedAreaFilter == null,
+                          onSelected: (selected) {
+                            setState(() {
+                              _selectedAreaFilter = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        ...areas.map((area) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(area),
+                              selected: _selectedAreaFilter == area,
+                              onSelected: (selected) {
+                                setState(() {
+                                  _selectedAreaFilter = selected ? area : null;
+                                });
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
 
               // Your Announcements
               SliverToBoxAdapter(
@@ -160,6 +203,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     final userAnnouncements = announcementProvider.announcements
                         .where((a) => a.createdBy == adminId)
                         .where((a) => _selectedCategoryFilter == null || _selectedCategoryFilter!.isEmpty || a.category == _selectedCategoryFilter)
+                        .where((a) => _selectedAreaFilter == null || _selectedAreaFilter!.isEmpty || a.area == _selectedAreaFilter)
                         .toList();
 
                     if (userAnnouncements.isEmpty) {
@@ -254,26 +298,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Announcement announcement,
     BuildContext context,
   ) {
+    final isResolved = announcement.category.toLowerCase() == 'resolved';
+    final now = DateTime.now();
+    final isOngoing = now.isAfter(announcement.startTime) &&
+        now.isBefore(announcement.endTime);
+    final statusLabel = isResolved
+        ? 'Resolved'
+        : isOngoing
+            ? 'Ongoing'
+            : 'Scheduled';
+    final statusColor = isResolved
+        ? const Color(0xFF388E3C)
+        : isOngoing
+            ? const Color(0xFFFF9800)
+            : const Color(0xFF1976D2);
+    final statusBackground = isResolved
+        ? const Color(0x24388E3C)
+        : isOngoing
+            ? const Color(0x24FF9800)
+            : const Color(0x241976D2);
+    final dateText =
+        '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} - ${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year}';
+
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusBackground,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Text(
-                    announcement.title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    statusLabel.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const Spacer(),
                 PopupMenuButton(
                   itemBuilder: (context) => [
                     PopupMenuItem(
@@ -289,27 +364,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         );
                       },
                     ),
-                    if (announcement.category != 'Resolved')
-                                    PopupMenuItem(
-                      child: const Text('Mark Resolved'),
-                      onTap: () async {
-                        if (!mounted) return;
-                        final announcementProvider =
-                            context.read<AnnouncementProvider>();
-                        final messenger = ScaffoldMessenger.of(context);
-                        final success = await announcementProvider.updateAnnouncement(
-                          announcement.copyWith(category: 'Resolved'),
-                        );
-                        if (!mounted) return;
-                        if (success) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Announcement marked resolved.'),
-                            ),
+                    if (!isResolved)
+                      PopupMenuItem(
+                        child: const Text('Mark Resolved'),
+                        onTap: () async {
+                          if (!mounted) return;
+                          final announcementProvider =
+                              context.read<AnnouncementProvider>();
+                          final messenger = ScaffoldMessenger.of(context);
+                          final success = await announcementProvider.updateAnnouncement(
+                            announcement.copyWith(category: 'Resolved'),
                           );
-                        }
-                      },
-                    ),
+                          if (!mounted) return;
+                          if (success) {
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Announcement marked resolved.'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
                     PopupMenuItem(
                       child: const Text('Delete'),
                       onTap: () {
@@ -320,39 +395,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text(
+              announcement.title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
-                Chip(
-                  label: Text(announcement.area),
-                  visualDensity: VisualDensity.compact,
-                ),
                 Chip(
                   label: Text(announcement.category),
                   visualDensity: VisualDensity.compact,
                 ),
+                Chip(
+                  label: Text(announcement.area),
+                  visualDensity: VisualDensity.compact,
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(
-                  Icons.schedule,
-                  size: 13,
-                  color: Color(0xFF999999),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    '${announcement.startTime.day}/${announcement.startTime.month} - ${announcement.endTime.day}/${announcement.endTime.month}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF999999),
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            Text(
+              dateText,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF777777),
+              ),
             ),
           ],
         ),
