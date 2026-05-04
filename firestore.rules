@@ -1,0 +1,35 @@
+// Firestore Security Rules for WaterWatch
+// Copy this into your Firebase Console > Firestore Database > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if request.auth.uid == userId;
+      // Users can write to their own data
+      allow write: if request.auth.uid == userId;
+      // Admin can read all users
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Announcements collection
+    match /announcements/{announcementId} {
+      // Anyone can read announcements
+      allow read: if request.auth != null;
+      // Only admins can create/update/delete
+      allow create, update, delete: if 
+        request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Read status collection
+    match /read_status/{statusId} {
+      // Users can read their own read status
+      allow read: if request.auth.uid == resource.data.userId;
+      // Users can create/update their own read status
+      allow create, update: if request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
