@@ -4,11 +4,6 @@ plugins {
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
-dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))    
-
-}
-
 
 android {
     namespace = "com.company.waterWatch"
