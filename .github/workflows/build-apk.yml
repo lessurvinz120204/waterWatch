@@ -33,11 +33,18 @@ jobs:
       - name: Create firebase_options.dart
         run: echo '${{ secrets.FIREBASE_OPTIONS_DART }}' > lib/firebase_options.dart
 
+      - name: Verify Firebase files
+        run: |
+          ls -la android/app/google-services.json
+          ls -la lib/firebase_options.dart
+          echo "google-services.json size: $(wc -c < android/app/google-services.json)"
+          echo "firebase_options.dart size: $(wc -c < lib/firebase_options.dart)"
+
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
