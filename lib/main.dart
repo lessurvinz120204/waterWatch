@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/announcement_provider.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/client/client_home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'models/user_model.dart';
+import 'utils/constants.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,10 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    final notificationService = NotificationService();
+    await notificationService.initializeNotifications();
+    await notificationService.subscribeToTopic(allUsersTopicName);
   } catch (e) {
     print('Firebase initialization error: $e');
   }
