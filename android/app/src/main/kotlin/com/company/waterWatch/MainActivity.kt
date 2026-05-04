@@ -1,4 +1,4 @@
-package com.example.water_watch
+package com.company.waterWatch
 
 import io.flutter.embedding.android.FlutterActivity
 
