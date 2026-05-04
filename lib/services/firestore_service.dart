@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/announcement_model.dart';
+import '../models/notification_model.dart';
 import '../models/read_status_model.dart';
 import 'package:uuid/uuid.dart';
 
@@ -213,6 +214,84 @@ class FirestoreService {
           .map((doc) => ReadStatus.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
     });
+  }
+
+  // NOTIFICATIONS
+
+  // Create notifications for all client users when announcement is posted
+  Future<void> createNotificationsForAllClients({
+    required String announcementId,
+    required String title,
+    required String area,
+    String type = 'new',
+  }) async {
+    try {
+      final usersSnapshot = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'client')
+          .get();
+
+      final batch = _firestore.batch();
+      for (final userDoc in usersSnapshot.docs) {
+        final notifId = const Uuid().v4();
+        final ref = _firestore.collection('notifications').doc(notifId);
+        batch.set(ref, AppNotification(
+          id: notifId,
+          userId: userDoc.id,
+          announcementId: announcementId,
+          title: title,
+          area: area,
+          isRead: false,
+          createdAt: DateTime.now(),
+          type: type,
+        ).toMap());
+      }
+      await batch.commit();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Get notifications stream for a user
+  Stream<List<AppNotification>> getNotificationsStream(String userId) {
+    return _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => AppNotification.fromMap(doc.data()))
+            .toList());
+  }
+
+  // Mark notification as read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      await _firestore
+          .collection('notifications')
+          .doc(notificationId)
+          .update({'isRead': true});
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Mark all notifications as read for a user
+  Future<void> markAllNotificationsAsRead(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('notifications')
+          .where('userId', isEqualTo: userId)
+          .where('isRead', isEqualTo: false)
+          .get();
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // ANALYTICS

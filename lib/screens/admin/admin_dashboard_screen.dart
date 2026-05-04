@@ -379,9 +379,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           final announcementProvider =
                               context.read<AnnouncementProvider>();
                           final messenger = ScaffoldMessenger.of(context);
-                          final success = await announcementProvider.updateAnnouncement(
-                            announcement.copyWith(category: 'Resolved'),
-                          );
+                          final success = await announcementProvider.markAsResolved(announcement);
                           if (!mounted) return;
                           if (success) {
                             messenger.showSnackBar(
@@ -620,7 +618,9 @@ class _CreateEditAnnouncementScreenState
                     labelText: 'Category',
                     prefixIcon: const Icon(Icons.category),
                   ),
-                  items: announcementCategories.map((category) {
+                  items: announcementCategories
+                      .where((c) => c != 'Resolved')
+                      .map((category) {
                     return DropdownMenuItem(
                       value: category,
                       child: Text(category),

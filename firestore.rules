@@ -26,10 +26,20 @@ service cloud.firestore {
 
     // Read status collection
     match /read_status/{statusId} {
-      // Users can read their own read status
       allow read: if request.auth.uid == resource.data.userId;
-      // Users can create/update their own read status
       allow create, update: if request.auth.uid == request.resource.data.userId;
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if request.auth.uid == resource.data.userId;
+      // Users can update their own notifications (mark as read)
+      allow update: if request.auth.uid == resource.data.userId;
+      // Admins can create notifications for any user
+      allow create: if
+        request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }

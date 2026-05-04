@@ -19,6 +19,17 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
   String? _selectedCategory;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userId = context.read<AuthProvider>().currentUser?.userId;
+      if (userId != null) {
+        context.read<AnnouncementProvider>().initUser(userId);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -31,11 +42,40 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         title: const Text('WaterWatch'),
         elevation: 0,
         actions: [
+          Consumer<AnnouncementProvider>(
+            builder: (context, provider, _) {
+              final unread = provider.unreadCount;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () => _showNotificationPanel(context, provider),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          unread > 99 ? '99+' : '$unread',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              _showLogoutConfirmation(context);
-            },
+            onPressed: () => _showLogoutConfirmation(context),
           ),
         ],
       ),
@@ -249,15 +289,112 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
     );
   }
 
+  void _showNotificationPanel(BuildContext context, AnnouncementProvider provider) {
+    final all = provider.notifications;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Notifications (${provider.unreadCount} unread)',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      if (provider.unreadCount > 0)
+                        TextButton(
+                          onPressed: () {
+                            provider.markAllNotificationsAsRead();
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Mark all read'),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                Expanded(
+                  child: all.isEmpty
+                      ? const Center(
+                          child: Text('No notifications yet', style: TextStyle(color: Color(0xFF999999))),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: all.length,
+                          itemBuilder: (context, index) {
+                            final notif = all[index];
+                            final isResolved = notif.type == 'resolved';
+                            final announcement = provider.announcements
+                                .where((a) => a.id == notif.announcementId)
+                                .firstOrNull;
+                            return Container(
+                              color: notif.isRead ? null : const Color(0xFFE3F2FD),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: isResolved
+                                      ? const Color(0xFF388E3C)
+                                      : const Color(0xFF4DA8DA),
+                                  child: Icon(
+                                    isResolved ? Icons.check_circle : Icons.water_drop,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                title: Text(
+                                  notif.title,
+                                  style: TextStyle(
+                                    fontWeight: notif.isRead ? FontWeight.normal : FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(notif.area, style: const TextStyle(fontSize: 12)),
+                                trailing: notif.isRead
+                                    ? null
+                                    : const Icon(Icons.circle, color: Colors.red, size: 10),
+                                onTap: () {
+                                  if (!notif.isRead) provider.markNotificationAsRead(notif.id);
+                                  Navigator.pop(context);
+                                  if (announcement != null) {
+                                    _showAnnouncementDetails(context, announcement);
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showAnnouncementDetails(
     BuildContext context,
     Announcement announcement,
   ) {
-    final authProvider = context.read<AuthProvider>();
-    if (authProvider.currentUser != null) {
-      context
-          .read<AnnouncementProvider>()
-          .markAsRead(authProvider.currentUser!.userId, announcement.id);
+    final provider = context.read<AnnouncementProvider>();
+    // Mark matching notification as read so badge decreases
+    final matchingNotif = provider.unreadNotifications
+        .where((n) => n.announcementId == announcement.id)
+        .firstOrNull;
+    if (matchingNotif != null) {
+      provider.markNotificationAsRead(matchingNotif.id);
     }
 
     showModalBottomSheet(
