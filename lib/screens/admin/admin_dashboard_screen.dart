@@ -66,11 +66,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildStatCard(
-                              'Active Today',
-                              _getActiveCount(
+                              'Unresolved',
+                              _getUnresolvedCount(
                                 announcementProvider.announcements,
                               ).toString(),
-                              Icons.check_circle,
+                              Icons.error_outline,
                             ),
                           ),
                         ],
@@ -128,9 +128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             onSelected: (selected) {
                               setState(() {
                                 _selectedCategoryFilter = selected ? category : null;
-                                if (!selected) {
-                                  _selectedAreaFilter = null;
-                                }
+                                _selectedAreaFilter = null;
                               });
                             },
                           ),
@@ -141,7 +139,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              if (_selectedCategoryFilter != null) ...[
+              if (_selectedCategoryFilter != null && _selectedCategoryFilter != 'Billing & Rates') ...[
                 SliverToBoxAdapter(
                   child: SizedBox(
                     height: 44,
@@ -299,25 +297,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     BuildContext context,
   ) {
     final isResolved = announcement.category.toLowerCase() == 'resolved';
+    final isBillingRates = announcement.category == 'Billing & Rates';
     final now = DateTime.now();
-    final isOngoing = now.isAfter(announcement.startTime) &&
+    final isOngoing = !isBillingRates &&
+        now.isAfter(announcement.startTime) &&
         now.isBefore(announcement.endTime);
-    final statusLabel = isResolved
-        ? 'Resolved'
-        : isOngoing
-            ? 'Ongoing'
-            : 'Scheduled';
-    final statusColor = isResolved
-        ? const Color(0xFF388E3C)
-        : isOngoing
-            ? const Color(0xFFFF9800)
-            : const Color(0xFF1976D2);
-    final statusBackground = isResolved
-        ? const Color(0x24388E3C)
-        : isOngoing
-            ? const Color(0x24FF9800)
-            : const Color(0x241976D2);
-    final dateText = announcement.category == 'Billing & Rates'
+    final statusLabel = isBillingRates
+        ? 'Announcement'
+        : isResolved
+            ? 'Resolved'
+            : isOngoing
+                ? 'Ongoing'
+                : 'Scheduled';
+    final statusColor = isBillingRates
+        ? const Color(0xFF1976D2)
+        : isResolved
+            ? const Color(0xFF388E3C)
+            : isOngoing
+                ? const Color(0xFFFF9800)
+                : const Color(0xFF1976D2);
+    final statusBackground = isBillingRates
+        ? const Color(0x241976D2)
+        : isResolved
+            ? const Color(0x24388E3C)
+            : isOngoing
+                ? const Color(0x24FF9800)
+                : const Color(0x241976D2);
+    final dateText = isBillingRates
         ? 'Created: ${announcement.createdAt.day}/${announcement.createdAt.month}/${announcement.createdAt.year} ${announcement.createdAt.hour}:${announcement.createdAt.minute.toString().padLeft(2, '0')}'
         : '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} - ${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year}';
 
@@ -365,7 +371,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         );
                       },
                     ),
-                    if (!isResolved)
+                    if (!isResolved && announcement.category != 'Billing & Rates')
                       PopupMenuItem(
                         child: const Text('Mark Resolved'),
                         onTap: () async {
@@ -435,14 +441,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  int _getActiveCount(List<Announcement> announcements) {
-    final now = DateTime.now();
+  int _getUnresolvedCount(List<Announcement> announcements) {
     return announcements.where((a) {
-      // Only count unresolved maintenance announcements
       return a.category.toLowerCase() == 'maintenance' &&
-          a.category.toLowerCase() != 'resolved' &&
-          now.isAfter(a.startTime) &&
-          now.isBefore(a.endTime);
+          a.category.toLowerCase() != 'resolved';
     }).length;
   }
 
@@ -527,18 +529,24 @@ class _CreateEditAnnouncementScreenState
           TextEditingController(text: widget.announcement!.description);
       _startTime = widget.announcement!.startTime;
       _endTime = widget.announcement!.endTime;
-      _selectedArea = widget.announcement!.area;
       _selectedCategory = widget.announcement!.category;
+      // Force All Areas for Billing & Rates
+      if (_selectedCategory == 'Billing & Rates') {
+        _selectedArea = 'All Areas';
+      } else {
+        _selectedArea = widget.announcement!.area;
+      }
     } else {
       _titleController = TextEditingController();
       _descriptionController = TextEditingController();
       _startTime = DateTime.now().add(const Duration(hours: 1));
       _endTime = DateTime.now().add(const Duration(hours: 2));
-      _selectedArea = null;
       _selectedCategory = announcementCategories.first;
-      // If first category is Billing & Rates, set area to All Areas
+      // Set area based on category
       if (_selectedCategory == 'Billing & Rates') {
         _selectedArea = 'All Areas';
+      } else {
+        _selectedArea = areas.isNotEmpty ? areas.first : null;
       }
     }
   }
@@ -605,38 +613,6 @@ class _CreateEditAnnouncementScreenState
                 ),
                 const SizedBox(height: 16),
 
-                // Area Selection
-                DropdownButtonFormField<String>(
-                  value: _selectedArea,
-                  decoration: InputDecoration(
-                    labelText: 'Area',
-                    prefixIcon: const Icon(Icons.location_on),
-                  ),
-                  items: _selectedCategory == 'Billing & Rates'
-                      ? [const DropdownMenuItem(
-                          value: 'All Areas',
-                          child: Text('All Areas'),
-                        )]
-                      : areas.map((area) {
-                          return DropdownMenuItem(
-                            value: area,
-                            child: Text(area),
-                          );
-                        }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedArea = value;
-                    });
-                  },
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Area is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
                 // Category Selection
                 DropdownButtonFormField<String>(
                   value: _selectedCategory,
@@ -653,9 +629,12 @@ class _CreateEditAnnouncementScreenState
                   onChanged: (value) {
                     setState(() {
                       _selectedCategory = value;
-                      // Auto-set to All Areas for Billing & Rates
+                      // Auto-set area based on category
                       if (value == 'Billing & Rates') {
                         _selectedArea = 'All Areas';
+                      } else {
+                        // If switching away from Billing & Rates, reset to first area
+                        _selectedArea = areas.isNotEmpty ? areas.first : null;
                       }
                     });
                   },
@@ -667,6 +646,40 @@ class _CreateEditAnnouncementScreenState
                   },
                 ),
                 const SizedBox(height: 16),
+
+                // Area Selection
+                if (_selectedCategory != 'Billing & Rates')
+                  Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedArea,
+                        decoration: InputDecoration(
+                          labelText: 'Area',
+                          prefixIcon: const Icon(Icons.location_on),
+                        ),
+                        items: areas.map((area) {
+                          return DropdownMenuItem(
+                            value: area,
+                            child: Text(area),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedArea = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value?.isEmpty ?? true) {
+                            return 'Area is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  )
+                else
+                  const SizedBox(height: 16),
 
                 // Start Time (hidden for Billing & Rates)
                 if (_selectedCategory != 'Billing & Rates')
@@ -769,14 +782,19 @@ class _CreateEditAnnouncementScreenState
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    if (_selectedCategory == null || _selectedArea == null) {
+    if (_selectedCategory == null ||
+        (_selectedCategory != 'Billing & Rates' && _selectedArea == null)) {
       return;
     }
+
+    final areaToUse = _selectedCategory == 'Billing & Rates'
+        ? 'All Areas'
+        : _selectedArea!;
 
     // For Billing & Rates, use creation time for start/end times
     DateTime startTimeToUse = _startTime;
     DateTime endTimeToUse = _endTime;
-    
+
     if (_selectedCategory == 'Billing & Rates') {
       final now = DateTime.now();
       startTimeToUse = now;
@@ -788,7 +806,7 @@ class _CreateEditAnnouncementScreenState
       final success = await announcementProvider.createAnnouncement(
         title: _titleController.text,
         description: _descriptionController.text,
-        area: _selectedArea!,
+        area: areaToUse,
         category: _selectedCategory!,
         startTime: startTimeToUse,
         endTime: endTimeToUse,
@@ -807,7 +825,7 @@ class _CreateEditAnnouncementScreenState
       final updated = widget.announcement!.copyWith(
         title: _titleController.text,
         description: _descriptionController.text,
-        area: _selectedArea!,
+        area: areaToUse,
         category: _selectedCategory!,
         startTime: startTimeToUse,
         endTime: endTimeToUse,

@@ -101,6 +101,9 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                         if (!selected) {
                                           _selectedArea = null;
                                           announcementProvider.setSelectedArea(null);
+                                        } else if (category == 'Billing & Rates') {
+                                          _selectedArea = null;
+                                          announcementProvider.setSelectedArea(null);
                                         }
                                       });
                                       announcementProvider.setSelectedCategory(
@@ -127,7 +130,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               ),
                             ),
                           ),
-                        if (_selectedCategory != null) ...[
+                        if (_selectedCategory == 'Billing & Rates')
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Billing & Rates applies to all areas, so area filters are hidden.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF757575),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_selectedCategory != null && _selectedCategory != 'Billing & Rates') ...[
                           const SizedBox(height: 12),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
@@ -297,14 +314,21 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 const SizedBox(height: 16),
 
                 // Time Information
-                _buildInfoRow(
-                  'Start Time',
-                  '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} ${announcement.startTime.hour}:${announcement.startTime.minute.toString().padLeft(2, '0')}',
-                ),
-                _buildInfoRow(
-                  'End Time',
-                  '${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year} ${announcement.endTime.hour}:${announcement.endTime.minute.toString().padLeft(2, '0')}',
-                ),
+                if (announcement.category == 'Billing & Rates') ...[
+                  _buildInfoRow(
+                    'Created',
+                    '${announcement.createdAt.day}/${announcement.createdAt.month}/${announcement.createdAt.year} ${announcement.createdAt.hour}:${announcement.createdAt.minute.toString().padLeft(2, '0')}',
+                  ),
+                ] else ...[
+                  _buildInfoRow(
+                    'Start Time',
+                    '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} ${announcement.startTime.hour}:${announcement.startTime.minute.toString().padLeft(2, '0')}',
+                  ),
+                  _buildInfoRow(
+                    'End Time',
+                    '${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year} ${announcement.endTime.hour}:${announcement.endTime.minute.toString().padLeft(2, '0')}',
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Description

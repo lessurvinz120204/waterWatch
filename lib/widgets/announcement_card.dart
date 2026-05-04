@@ -14,26 +14,33 @@ class AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final isOngoing = now.isAfter(announcement.startTime) &&
-        now.isBefore(announcement.endTime);
     final isResolved = announcement.category.toLowerCase() == 'resolved';
-    final statusLabel = isResolved
-        ? 'Resolved'
-        : isOngoing
-            ? 'Ongoing'
-            : 'Scheduled';
-    final statusColor = isResolved
-        ? const Color(0xFF388E3C)
-        : isOngoing
-            ? const Color(0xFFFF9800)
-            : const Color(0xFF1976D2);
-    final statusBackground = isResolved
-        ? const Color(0x24388E3C)
-        : isOngoing
-            ? const Color(0x24FF9800)
-            : const Color(0x241976D2);
-    final dateText = announcement.category == 'Billing & Rates'
+    final isBillingRates = announcement.category == 'Billing & Rates';
+    final now = DateTime.now();
+    final isOngoing = !isBillingRates && now.isAfter(announcement.startTime) &&
+        now.isBefore(announcement.endTime);
+    final statusLabel = isBillingRates
+        ? 'Announcement'
+        : isResolved
+            ? 'Resolved'
+            : isOngoing
+                ? 'Ongoing'
+                : 'Scheduled';
+    final statusColor = isBillingRates
+        ? const Color(0xFF1976D2)
+        : isResolved
+            ? const Color(0xFF388E3C)
+            : isOngoing
+                ? const Color(0xFFFF9800)
+                : const Color(0xFF1976D2);
+    final statusBackground = isBillingRates
+        ? const Color(0x241976D2)
+        : isResolved
+            ? const Color(0x24388E3C)
+            : isOngoing
+                ? const Color(0x24FF9800)
+                : const Color(0x241976D2);
+    final dateText = isBillingRates
         ? 'Created: ${DateFormat('MMM d, yyyy').format(announcement.createdAt)}'
         : '${DateFormat('MMM d, yyyy').format(announcement.startTime)} - ${DateFormat('MMM d, yyyy').format(announcement.endTime)}';
 

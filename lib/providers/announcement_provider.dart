@@ -66,7 +66,7 @@ class AnnouncementProvider extends ChangeNotifier {
     }
 
     // Filter by area
-    if (_selectedArea != null && _selectedArea!.isNotEmpty) {
+    if (_selectedArea != null && _selectedArea!.isNotEmpty && _selectedCategory != 'Billing & Rates') {
       _filteredAnnouncements = _filteredAnnouncements
           .where((a) => a.area.toLowerCase() == _selectedArea!.toLowerCase())
           .toList();
