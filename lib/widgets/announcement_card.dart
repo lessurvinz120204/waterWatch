@@ -33,8 +33,9 @@ class AnnouncementCard extends StatelessWidget {
         : isOngoing
             ? const Color(0x24FF9800)
             : const Color(0x241976D2);
-    final dateText =
-        '${DateFormat('MMM d, yyyy').format(announcement.startTime)} - ${DateFormat('MMM d, yyyy').format(announcement.endTime)}';
+    final dateText = announcement.category == 'Billing & Rates'
+        ? 'Created: ${DateFormat('MMM d, yyyy').format(announcement.createdAt)}'
+        : '${DateFormat('MMM d, yyyy').format(announcement.startTime)} - ${DateFormat('MMM d, yyyy').format(announcement.endTime)}';
 
     return Card(
       elevation: 2,

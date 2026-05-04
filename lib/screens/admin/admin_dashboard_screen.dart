@@ -317,8 +317,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         : isOngoing
             ? const Color(0x24FF9800)
             : const Color(0x241976D2);
-    final dateText =
-        '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} - ${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year}';
+    final dateText = announcement.category == 'Billing & Rates'
+        ? 'Created: ${announcement.createdAt.day}/${announcement.createdAt.month}/${announcement.createdAt.year} ${announcement.createdAt.hour}:${announcement.createdAt.minute.toString().padLeft(2, '0')}'
+        : '${announcement.startTime.day}/${announcement.startTime.month}/${announcement.startTime.year} - ${announcement.endTime.day}/${announcement.endTime.month}/${announcement.endTime.year}';
 
     return Card(
       elevation: 2,
@@ -437,7 +438,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _getActiveCount(List<Announcement> announcements) {
     final now = DateTime.now();
     return announcements.where((a) {
-      return now.isAfter(a.startTime) && now.isBefore(a.endTime);
+      // Only count unresolved maintenance announcements
+      return a.category.toLowerCase() == 'maintenance' &&
+          a.category.toLowerCase() != 'resolved' &&
+          now.isAfter(a.startTime) &&
+          now.isBefore(a.endTime);
     }).length;
   }
 
@@ -531,6 +536,10 @@ class _CreateEditAnnouncementScreenState
       _endTime = DateTime.now().add(const Duration(hours: 2));
       _selectedArea = null;
       _selectedCategory = announcementCategories.first;
+      // If first category is Billing & Rates, set area to All Areas
+      if (_selectedCategory == 'Billing & Rates') {
+        _selectedArea = 'All Areas';
+      }
     }
   }
 
@@ -603,12 +612,17 @@ class _CreateEditAnnouncementScreenState
                     labelText: 'Area',
                     prefixIcon: const Icon(Icons.location_on),
                   ),
-                  items: areas.map((area) {
-                    return DropdownMenuItem(
-                      value: area,
-                      child: Text(area),
-                    );
-                  }).toList(),
+                  items: _selectedCategory == 'Billing & Rates'
+                      ? [const DropdownMenuItem(
+                          value: 'All Areas',
+                          child: Text('All Areas'),
+                        )]
+                      : areas.map((area) {
+                          return DropdownMenuItem(
+                            value: area,
+                            child: Text(area),
+                          );
+                        }).toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedArea = value;
@@ -639,6 +653,10 @@ class _CreateEditAnnouncementScreenState
                   onChanged: (value) {
                     setState(() {
                       _selectedCategory = value;
+                      // Auto-set to All Areas for Billing & Rates
+                      if (value == 'Billing & Rates') {
+                        _selectedArea = 'All Areas';
+                      }
                     });
                   },
                   validator: (value) {
@@ -650,36 +668,41 @@ class _CreateEditAnnouncementScreenState
                 ),
                 const SizedBox(height: 16),
 
-                // Start Time
-                TextFormField(
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'Start Time',
-                    prefixIcon: const Icon(Icons.access_time),
-                    hintText: 'Select start time',
+                // Start Time (hidden for Billing & Rates)
+                if (_selectedCategory != 'Billing & Rates')
+                  TextFormField(
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'Start Time',
+                      prefixIcon: const Icon(Icons.access_time),
+                      hintText: 'Select start time',
+                    ),
+                    controller: TextEditingController(
+                      text:
+                          '${_startTime.day}/${_startTime.month}/${_startTime.year} ${_startTime.hour}:${_startTime.minute.toString().padLeft(2, '0')}',
+                    ),
+                    onTap: () => _selectDateTime(context, true),
                   ),
-                  controller: TextEditingController(
-                    text:
-                        '${_startTime.day}/${_startTime.month}/${_startTime.year} ${_startTime.hour}:${_startTime.minute.toString().padLeft(2, '0')}',
-                  ),
-                  onTap: () => _selectDateTime(context, true),
-                ),
-                const SizedBox(height: 16),
+                if (_selectedCategory != 'Billing & Rates')
+                  const SizedBox(height: 16),
 
-                // End Time
-                TextFormField(
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'End Time',
-                    prefixIcon: const Icon(Icons.access_time),
-                    hintText: 'Select end time',
+                // End Time (hidden for Billing & Rates)
+                if (_selectedCategory != 'Billing & Rates')
+                  TextFormField(
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'End Time',
+                      prefixIcon: const Icon(Icons.access_time),
+                      hintText: 'Select end time',
+                    ),
+                    controller: TextEditingController(
+                      text:
+                          '${_endTime.day}/${_endTime.month}/${_endTime.year} ${_endTime.hour}:${_endTime.minute.toString().padLeft(2, '0')}',
+                    ),
+                    onTap: () => _selectDateTime(context, false),
                   ),
-                  controller: TextEditingController(
-                    text:
-                        '${_endTime.day}/${_endTime.month}/${_endTime.year} ${_endTime.hour}:${_endTime.minute.toString().padLeft(2, '0')}',
-                  ),
-                  onTap: () => _selectDateTime(context, false),
-                ),
+                if (_selectedCategory != 'Billing & Rates')
+                  const SizedBox(height: 16),
                 const SizedBox(height: 24),
 
                 // Save Button
@@ -750,6 +773,16 @@ class _CreateEditAnnouncementScreenState
       return;
     }
 
+    // For Billing & Rates, use creation time for start/end times
+    DateTime startTimeToUse = _startTime;
+    DateTime endTimeToUse = _endTime;
+    
+    if (_selectedCategory == 'Billing & Rates') {
+      final now = DateTime.now();
+      startTimeToUse = now;
+      endTimeToUse = now.add(const Duration(hours: 1));
+    }
+
     if (widget.announcement == null) {
       // Create new
       final success = await announcementProvider.createAnnouncement(
@@ -757,8 +790,8 @@ class _CreateEditAnnouncementScreenState
         description: _descriptionController.text,
         area: _selectedArea!,
         category: _selectedCategory!,
-        startTime: _startTime,
-        endTime: _endTime,
+        startTime: startTimeToUse,
+        endTime: endTimeToUse,
         createdBy: authProvider.currentUser!.userId,
       );
 
@@ -776,8 +809,8 @@ class _CreateEditAnnouncementScreenState
         description: _descriptionController.text,
         area: _selectedArea!,
         category: _selectedCategory!,
-        startTime: _startTime,
-        endTime: _endTime,
+        startTime: startTimeToUse,
+        endTime: endTimeToUse,
       );
 
       final success = await announcementProvider.updateAnnouncement(updated);
